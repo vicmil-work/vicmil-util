@@ -25,7 +25,7 @@ def path_traverse_up(path: str, levels_up: int) -> str:
 class BuildSetup:
     def __init__(self, cpp_file_paths: List[str], output_dir: str, browser = False):
         # When building c++ projects, this is in general the order the flags should be
-        self.n1_compiler_path = get_default_compiler_path(browser=True)
+        self.n1_compiler_path = get_default_compiler_path(browser=browser)
         self.n2_cpp_files = '"' + '" "'.join(cpp_file_paths) + '"'
         self.n3_optimization_level = ""
         self.n4_macros = ""
@@ -175,9 +175,9 @@ def get_default_compiler_path(browser = False):
 
     else:
         if platform_name == "Windows": # Windows
-            return '"' + path_traverse_up(__file__, 2) + "/emsdk/emsdk-win/upstream/emscripten/em++.bat" + '"'
+            return '"' + path_traverse_up(__file__, 2) + "/emsdk/emsdk/upstream/emscripten/em++.bat" + '"'
         else:
-            return '"' + path_traverse_up(__file__, 2) + "/emsdk/emsdk-linux/upstream/emscripten/em++" + '"'
+            return '"' + path_traverse_up(__file__, 2) + "/emsdk/emsdk/upstream/emscripten/em++" + '"'
 
 
 def add_opengl_flags(build_setup: BuildSetup):
