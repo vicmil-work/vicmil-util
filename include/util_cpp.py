@@ -25,7 +25,7 @@ def path_traverse_up(path: str, levels_up: int) -> str:
 class BuildSetup:
     def __init__(self, cpp_file_paths: List[str], output_dir: str, browser = False):
         # When building c++ projects, this is in general the order the flags should be
-        self.n1_compiler_path = "g++"
+        self.n1_compiler_path = get_default_compiler_path(browser=True)
         self.n2_cpp_files = '"' + '" "'.join(cpp_file_paths) + '"'
         self.n3_optimization_level = ""
         self.n4_macros = ""
@@ -147,7 +147,7 @@ def launch_html_page(html_file_path: str):
     -------
         None
     """
-    os.chdir(path_traverse_up(html_file_path, count=0))
+    os.chdir(path_traverse_up(html_file_path, levels_up=0))
     if not (os.path.exists(html_file_path)):
         print("html file does not exist!")
         return
@@ -164,20 +164,20 @@ def launch_html_page(html_file_path: str):
 
 
 # Get the defualt compiler path within vicmil lib
-def get_default_compiler_path(deps_dir: str, browser = False):
+def get_default_compiler_path(browser = False):
     platform_name = platform.system()
 
     if not browser:
         if platform_name == "Windows": # Windows
-            return '"' + deps_dir + "/mingw64/bin/g++" + '"'
+            return "g++"
         else:
             return "g++"
 
     else:
         if platform_name == "Windows": # Windows
-            return '"' + deps_dir + "/emsdk/upstream/emscripten/em++.bat" + '"'
+            return '"' + path_traverse_up(__file__, 2) + "/emsdk/emsdk-win/upstream/emscripten/em++.bat" + '"'
         else:
-            return '"' + deps_dir + "/emsdk/upstream/emscripten/em++" + '"'
+            return '"' + path_traverse_up(__file__, 2) + "/emsdk/emsdk-linux/upstream/emscripten/em++" + '"'
 
 
 def add_opengl_flags(build_setup: BuildSetup):
