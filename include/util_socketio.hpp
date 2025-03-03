@@ -7,7 +7,7 @@ The idea is to be cross platform, and also to support the web
 #include "util_js.hpp"
 
 #ifndef __EMSCRIPTEN__
-#include "../deps/socket.io-client-cpp/src/sio_client.h"
+#include "socket.io-client-cpp/src/sio_client.h"
 #else
 #include <emscripten/emscripten.h>
 #include <emscripten/bind.h>

@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "../deps/glm/glm/gtx/transform.hpp"
-#include "../deps/glm/glm/gtx/string_cast.hpp"
+#include "glm/glm/gtx/transform.hpp"
+#include "glm/glm/gtx/string_cast.hpp"
 #include "util_std.hpp"
 #include "util_stb.hpp"
 #include "util_obj_loader.hpp"

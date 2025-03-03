@@ -294,7 +294,7 @@ namespace vicmil {
         }
         
         int count = 1;
-        while (std::filesystem::exists(file_name)) {
+        while (vicmil::file_exists(file_name)) {
             std::ostringstream oss;
             oss << base_name << "(" << count << ")" << extension;
             file_name = oss.str();

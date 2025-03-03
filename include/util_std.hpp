@@ -31,9 +31,9 @@ Everything should be supported in C++11 and newer versions across most major pla
 #include <regex>        // Includes functions for regex
 #include <chrono>       // Includes functions related to time 
 #include <thread>       // Includes functions for handling multi-thread applications
-#include <complex.h>    // For supporting complex number operations
 #include <mutex>        // Support library for using threads, includes locks
 #include <future>       // Support library for using threads, used for asynchronous retrieval of values
+#include <complex.h>    // For supporting complex number operations
 
 #include <typeindex>    // For getting the index of different types, and other type information
 #include <random>       // For generating random numbers
@@ -440,6 +440,14 @@ std::vector<unsigned char> base64_decode(const std::string& in) {
 // ============================================================
 //                      File read/write
 // ============================================================
+
+/**
+ * Check if file exists
+*/
+bool file_exists(const std::string& file_name) {
+    std::ifstream file(file_name);
+    return file.good();
+}
 
 /**
  * Read all the contents of a file and return it as a string
