@@ -23,7 +23,7 @@ def path_traverse_up(path: str, levels_up: int) -> str:
 
 
 class BuildSetup:
-    def __init__(self, cpp_file_paths: List[str], output_dir: str, browser = False, include_vicmil_pip_packages=True):
+    def __init__(self, cpp_file_paths: List[str], output_dir: str, browser = False, include_vicmil_pip_packages=True, O2_optimization=True):
         # When building c++ projects, this is in general the order the flags should be
         self.n1_compiler_path: str = get_default_compiler_path(browser=browser)
         self.n2_cpp_files: list = ['"' + path_ + '"' for path_ in cpp_file_paths]
@@ -40,6 +40,9 @@ class BuildSetup:
         self.vicmil_pip_path = path_traverse_up(__file__, 2)
         if include_vicmil_pip_packages:
             self.include_installed_vicmil_pip_packages()
+
+        if O2_optimization:
+            self.n3_optimization_level.append("-O2") # Add some default optimization during compilation
 
     def _include_vicmil_pip(self):
         if not self.vicmil_pip_path in self.n6_include_paths:
