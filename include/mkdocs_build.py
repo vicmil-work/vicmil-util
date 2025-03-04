@@ -11,11 +11,7 @@ def get_directory(file_path: str):
 def _python_virtual_environment(env_directory_path):
     # Setup a python virtual environmet
     os.makedirs(env_directory_path, exist_ok=True) # Ensure directory exists
-    my_os = platform.system()
-    if my_os == "Windows":
-        os.system(f'python -m venv "{env_directory_path}"')
-    else:
-        os.system(f'python3 -m venv "{env_directory_path}"')
+    os.system(f'{sys.executable} -m venv "{env_directory_path}"')
 
 
 def _pip_install_packages_in_virtual_environment(env_directory_path, packages):
