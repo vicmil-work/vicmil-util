@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheet CSV Demo</title>
+</head>
+<body>
+    <h2>Google Sheet Data</h2>
+    <table border="1" id="data-table"></table>
+
+    <script>
+        // This is just a short demo to show how you can do it in raw javascript
+        // This file is not actually used by the c++ code
+
+        const sheetId = "";  // Replace with your actual Sheet ID
+        const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+
+        fetch(url)
+            .then(response => response.text())
+            .then(csvText => {
+                const rows = csvText.split("\n").map(row => row.split(",")); // Convert CSV to array
+
+                let tableHtml = "";
+                rows.forEach((row, index) => {
+                    tableHtml += "<tr>" + row.map(cell => `<td>${cell}</td>`).join("") + "</tr>";
+                });
+
+                document.getElementById("data-table").innerHTML = tableHtml;
+            })
+            .catch(error => console.error("Error loading data:", error));
+    </script>
+</body>
+</html>
