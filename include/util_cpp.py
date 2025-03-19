@@ -48,6 +48,8 @@ class BuildSetup:
             # Add additional flags when compiling with emscripten
             self.n5_additional_compiler_settings.append("-s ASYNCIFY=1") # Enable sleep with emscripten
             self.n5_additional_compiler_settings.append("-s ALLOW_MEMORY_GROWTH") # Do not limit the app to a small amount of memory
+            self.n5_additional_compiler_settings.append("-s EXTRA_EXPORTED_RUNTIME_METHODS=ccall,cwrap")
+            self.n8_library_files.append("-lembind") # Allow binding javascript functions from c++
 
     def _include_vicmil_pip(self):
         if not self.vicmil_pip_path in self.n6_include_paths:
