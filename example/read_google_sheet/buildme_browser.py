@@ -13,6 +13,8 @@ build_setup = BuildSetup(
     include_vicmil_pip_packages=False
 )
 
+build_setup.n8_library_files.append("-lembind")
+
 build_setup.build_and_run()
 
 
