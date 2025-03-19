@@ -44,6 +44,11 @@ class BuildSetup:
         if O2_optimization:
             self.n3_optimization_level.append("-O2") # Add some default optimization during compilation
 
+        if self.browser_flag:
+            # Add additional flags when compiling with emscripten
+            self.n5_additional_compiler_settings.append("-s ASYNCIFY=1") # Enable sleep with emscripten
+            self.n5_additional_compiler_settings.append("-s ALLOW_MEMORY_GROWTH") # Do not limit the app to a small amount of memory
+
     def _include_vicmil_pip(self):
         if not self.vicmil_pip_path in self.n6_include_paths:
             self.n6_include_paths.append('-I "' + self.vicmil_pip_path + '"')
