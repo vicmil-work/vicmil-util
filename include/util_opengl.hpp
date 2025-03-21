@@ -1102,6 +1102,120 @@ bool window_resized(const std::vector<SDL_Event>& events) {
     return false;
 } 
 
+/**
+ * Handle text input from the user:
+*/
+class TextInput {
+public:
+    std::vector<int> inputText;  // Store input as Unicode code points
+
+    // In some languages, such as japanese or chinese, the user may want to type multiple characters to select which character to input
+    // The user is still deciding which character to input 
+    // Append at the end of the text, then the actual input is handled as a text input once the user is done with the selection
+    std::vector<int> compositionText;  // Store composition text as Unicode code points
+
+    size_t cursorPos = 0;  // Track the cursor position (index into inputText)
+
+    bool update(const std::vector<SDL_Event>& events) {
+        bool updated = false;
+
+        for (int i = 0; i < events.size(); i++) {
+            const SDL_Event& event = events[i];
+            if (event.type == SDL_TEXTINPUT) {
+                // Convert the UTF-8 text input to Unicode code points
+                std::vector<int> codePoints = vicmil::utf8ToUnicodeCodePoints(event.text.text);
+                
+                // Insert the input text at the cursor position
+                inputText.insert(inputText.begin() + cursorPos, codePoints.begin(), codePoints.end());
+                cursorPos += codePoints.size();  // Move the cursor to the end of the newly inserted text
+                compositionText.clear();  // Clear composition text once input is confirmed
+                updated = true;
+            } else if (event.type == SDL_TEXTEDITING) {
+                // Convert the composition text to Unicode code points and update
+                compositionText = vicmil::utf8ToUnicodeCodePoints(event.edit.text);
+                updated = true;
+            } else if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_BACKSPACE && cursorPos > 0) {
+                    // Remove character before cursor position
+                    inputText.erase(inputText.begin() + cursorPos - 1);
+                    cursorPos--;  // Move cursor left
+                    updated = true;
+                } else if (event.key.keysym.sym == SDLK_RETURN) {
+                    // Handle enter (newline)
+                    std::vector<int> newline_char = {'\n'};
+                    inputText.insert(inputText.begin() + cursorPos, newline_char.begin(), newline_char.end());
+                    cursorPos++;  // Move cursor to end after newline
+                    compositionText.clear();
+                    updated = true;
+                } else if (event.key.keysym.sym == SDLK_LEFT && cursorPos > 0) {
+                    // Move cursor left
+                    cursorPos--;
+                    updated = true;
+                } else if (event.key.keysym.sym == SDLK_RIGHT && cursorPos < inputText.size()) {
+                    // Move cursor right
+                    cursorPos++;
+                    updated = true;
+                } else if (event.key.keysym.sym == SDLK_v && (SDL_GetModState() & KMOD_CTRL)) {
+                    // Handle Ctrl+V (paste from clipboard)
+                    const char* clipboardText = SDL_GetClipboardText();
+                    if (clipboardText) {
+                        // Convert clipboard text to Unicode code points
+                        std::vector<int> clipboardCodePoints = vicmil::utf8ToUnicodeCodePoints(clipboardText);
+                        
+                        // Insert clipboard text at the cursor position
+                        inputText.insert(inputText.begin() + cursorPos, clipboardCodePoints.begin(), clipboardCodePoints.end());
+                        cursorPos += clipboardCodePoints.size();  // Move cursor to the end of the pasted text
+                        updated = true;
+                    }
+                }
+            }
+        }
+
+        return updated;
+    }
+
+    void start() {
+        SDL_StartTextInput();
+        // If running in the browser with emscripten, you also want to create an empty input element to handle input, especially for mobile devices
+        // TODO
+    }
+
+    void stop() {
+        SDL_StopTextInput();
+    }
+
+    // Function to get the UTF-8 encoded string of inputText
+    std::string getInputTextUTF8() const {
+        return vicmil::unicodeToUtf8(inputText);
+    }
+
+    // Function to get the UTF-8 encoded string of compositionText
+    std::string getCompositionTextUTF8() const {
+        return vicmil::unicodeToUtf8(compositionText);
+    }
+
+    // Function to get the UTF-8 encoded string of inputText with cursor indicator '|'
+    std::string getInputTextUTF8WithCursor() {
+        size_t cursorPos = getCursorPos();
+
+        // Ensure the cursor position is within bounds
+        if (cursorPos > inputText.size()) {
+            cursorPos = inputText.size();
+        }
+
+        std::vector<int> inputText_copy = inputText;
+        std::vector<int> cursor_indicator = {'|'};
+        inputText_copy.insert(inputText_copy.begin() + cursorPos, cursor_indicator.begin(), cursor_indicator.end());
+
+        return vicmil::unicodeToUtf8(inputText_copy);
+    }
+
+    // Function to get the current cursor position (for rendering or other purposes)
+    size_t getCursorPos() const {
+        return cursorPos;
+    }
+};
+
 
 // ============================================================
 //                    Gui and layout

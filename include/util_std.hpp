@@ -381,6 +381,29 @@ std::vector<int> utf8ToUnicodeCodePoints(const std::string& utf8String) {
     return codePoints;
 }
 
+// Function to convert a vector of Unicode code points back into a UTF-8 string
+std::string unicodeToUtf8(const std::vector<int>& codePoints) {
+    std::string result;
+    for (int codePoint : codePoints) {
+        if (codePoint <= 0x7F) {
+            result += static_cast<char>(codePoint);  // 1 byte
+        } else if (codePoint <= 0x7FF) {
+            result += static_cast<char>(0xC0 | (codePoint >> 6));
+            result += static_cast<char>(0x80 | (codePoint & 0x3F));  // 2 bytes
+        } else if (codePoint <= 0xFFFF) {
+            result += static_cast<char>(0xE0 | (codePoint >> 12));
+            result += static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F));
+            result += static_cast<char>(0x80 | (codePoint & 0x3F));  // 3 bytes
+        } else {
+            result += static_cast<char>(0xF0 | (codePoint >> 18));
+            result += static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F));
+            result += static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F));
+            result += static_cast<char>(0x80 | (codePoint & 0x3F));  // 4 bytes
+        }
+    }
+    return result;
+}
+
 // Function to convert raw data to a base64 string
 std::string to_base64(const std::vector<unsigned char>& data) {
     static const char* const base64_chars =
