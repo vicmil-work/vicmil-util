@@ -455,30 +455,31 @@ struct IndexedTriangleI3 {
 };
 
 // Assume all the data is layed out nicely, eg (triangle_corner 1, 2, 3), (triangle_corner 1, 2, 3). etc.
+// Each vertex refers to a triangle corner
 class VertexBuffer {
 public:
     GLBuffer vertex_buffer;
     int buffer_vertex_count = 0;
-    static VertexBuffer from_raw_data(void* vertex_data, unsigned int vertex_data_byte_size, int triangle_count_) {
+    static VertexBuffer from_raw_data(void* vertex_data, unsigned int vertex_data_byte_size, int vertex_count_) {
         VertexBuffer new_buffer;
         new_buffer.vertex_buffer = GLBuffer::generate_buffer(vertex_data_byte_size, vertex_data, GL_ARRAY_BUFFER);
-        new_buffer.buffer_vertex_count = triangle_count_ * 3;
+        new_buffer.buffer_vertex_count = vertex_count_;
         return new_buffer;
     }
-    template<class TRIANGLE>
-    static VertexBuffer from_triangle_vector(std::vector<TRIANGLE>& vec) {
-        return from_raw_data(&vec[0], vec.size() * sizeof(TRIANGLE), vec.size());
+    template<class VERTEX>
+    static VertexBuffer from_vertex_vector(std::vector<VERTEX>& vec) {
+        return from_raw_data(&vec[0], vec.size() * sizeof(VERTEX), vec.size());
     }
     /**
      * Overwrite all the data in the vertex buffer
     */
-    void overwrite_data(void* vertex_data, unsigned int vertex_data_byte_size, int triangle_count_) {
-        buffer_vertex_count = triangle_count_ * 3;
+    void overwrite_data(void* vertex_data, unsigned int vertex_data_byte_size, int vertex_count_) {
+        buffer_vertex_count = vertex_count_;
         vertex_buffer.overwrite_buffer_data(vertex_data_byte_size, vertex_data);
     }
-    template<class TRIANGLE>
-    void overwrite_triangle_vector(std::vector<TRIANGLE>& vec) {
-        return overwrite_data(&vec[0], vec.size() * sizeof(TRIANGLE), vec.size());
+    template<class VERTEX>
+    void overwrite_vertex_vector(std::vector<VERTEX>& vec) {
+        return overwrite_data(&vec[0], vec.size() * sizeof(VERTEX), vec.size());
     }
     /**
      * Bind the vertex buffer on the GPU. This means that it 
@@ -1464,7 +1465,7 @@ public:
         // Provide a default vertex buffer so the user don't have to think about it
         std::vector<VertexCoordColor> vertex_buffer_contents = {};
         add_color_rect_to_triangle_buffer(vertex_buffer_contents, GuiEngine::RectGL(-0.5, 0.5, 1, 1), 0, 255, 0, 0);
-        vicmil::VertexBuffer vertex_buffer = vicmil::VertexBuffer::from_triangle_vector(vertex_buffer_contents);
+        vicmil::VertexBuffer vertex_buffer = vicmil::VertexBuffer::from_vertex_vector(vertex_buffer_contents);
         return vertex_buffer;
     }
 
@@ -1472,7 +1473,7 @@ public:
         gpu_program_VertexCoordColor_no_proj.bind_program();
         vicmil::DefaultGpuPrograms::set_vertex_buffer_layout_VertexCoordColor(gpu_program_VertexCoordColor_no_proj);
         default_vertex_buffer.bind();
-        default_vertex_buffer.overwrite_triangle_vector(vertices);
+        default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_vertex_buffer.draw_triangles();
     }
     void draw_2d_VertexTextureCoord_vertex_buffer(std::vector<vicmil::VertexTextureCoord>& vertices, vicmil::GPUImage gpu_image) {
@@ -1480,14 +1481,14 @@ public:
         vicmil::DefaultGpuPrograms::set_vertex_buffer_layout_VertexTextureCoord(gpu_program_VertexTextureCoord_no_proj);
         gpu_image.texture.bind();
         default_vertex_buffer.bind();
-        default_vertex_buffer.overwrite_triangle_vector(vertices);
+        default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_vertex_buffer.draw_triangles();
     }
     void draw_3d_VertexCoordColor_vertex_buffer(std::vector<vicmil::VertexCoordColor>& vertices, glm::mat4 transform_matrix) {
         gpu_program_VertexCoordColor_proj.bind_program();
         vicmil::DefaultGpuPrograms::set_vertex_buffer_layout_VertexCoordColor(gpu_program_VertexCoordColor_proj);
         default_vertex_buffer.bind();
-        default_vertex_buffer.overwrite_triangle_vector(vertices);
+        default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_uniform_buffer.set_matrix(transform_matrix, gpu_program_VertexCoordColor_proj.id);
         default_vertex_buffer.draw_triangles();
     }
@@ -1495,7 +1496,7 @@ public:
         gpu_program_VertexCoordColor_proj.bind_program();
         vicmil::DefaultGpuPrograms::set_vertex_buffer_layout_VertexCoordColor(gpu_program_VertexCoordColor_proj);
         default_vertex_buffer.bind();
-        default_vertex_buffer.overwrite_triangle_vector(vertices);
+        default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_uniform_buffer.set_matrix(transform_matrix, gpu_program_VertexCoordColor_proj.id);
         default_vertex_buffer.draw_points();
     }
@@ -1504,7 +1505,7 @@ public:
         vicmil::DefaultGpuPrograms::set_vertex_buffer_layout_VertexTextureCoord(gpu_program_VertexTextureCoord_proj);
         gpu_image.texture.bind();
         default_vertex_buffer.bind();
-        default_vertex_buffer.overwrite_triangle_vector(vertices);
+        default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_uniform_buffer.set_matrix(transform_matrix, gpu_program_VertexTextureCoord_proj.id);
         default_vertex_buffer.draw_triangles();
     }
