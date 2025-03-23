@@ -78,6 +78,9 @@ class BuildSetup:
         if os.path.exists(self.vicmil_pip_path + "/glm"):
             print("Including glm")
             self.include_glm()
+        if os.path.exists(self.vicmil_pip_path + "/json"):
+            print("Including json")
+            self.include_json()
 
     def include_sdl_opengl(self): # Opengl is a cross platform graphics library that also works in the browser(with the right setup)
         self._include_vicmil_pip()
@@ -98,6 +101,9 @@ class BuildSetup:
         self._include_vicmil_pip()
 
     def include_tiny_obj_loader(self):
+        self._include_vicmil_pip()
+
+    def include_json(self):
         self._include_vicmil_pip()
 
     def generate_build_command(self):
