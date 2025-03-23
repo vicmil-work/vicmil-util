@@ -26,11 +26,11 @@ class BuildSetup:
     def __init__(self, cpp_file_paths: List[str], output_dir: str, browser = False, include_vicmil_pip_packages=True, O2_optimization=True):
         # When building c++ projects, this is in general the order the flags should be
         self.n1_compiler_path: str = get_default_compiler_path(browser=browser)
-        self.n2_cpp_files: list = ['"' + path_ + '"' for path_ in cpp_file_paths]
+        self.n2_cpp_files: list = [path_ for path_ in cpp_file_paths]
         self.n3_optimization_level: list = ["-std=c++11"] # Specify using c++11 by default
         self.n4_macros: list = []
         self.n5_additional_compiler_settings: list = []
-        self.n6_include_paths: list = ["-I" + path_traverse_up(__file__, 0)]
+        self.n6_include_paths: list = ["-I \"" + path_traverse_up(__file__, 0) + "\""]
         self.n7_library_paths: list = []
         self.n8_library_files: list = []
         self.n9_output_file: str = output_dir + "/" + get_default_output_file(browser=browser)
@@ -109,7 +109,7 @@ class BuildSetup:
     def generate_build_command(self):
         arguments = [
             self.n1_compiler_path, 
-            " ".join(self.n2_cpp_files),
+            " ".join(['"' + path_ + '"' for path_ in self.n2_cpp_files]),
             " ".join(self.n3_optimization_level),
             " ".join(self.n4_macros),
             " ".join(self.n5_additional_compiler_settings),
@@ -311,10 +311,10 @@ def add_socketio_client_flags(build_setup: BuildSetup):
     build_setup.n2_cpp_files.append(dependencies_directory + "/src/internal/sio_client_impl.cpp")
     build_setup.n2_cpp_files.append(dependencies_directory + "/src/internal/sio_packet.cpp")
     
-    build_setup.n6_include_paths.append("-I" + dependencies_directory + "/lib")
-    build_setup.n6_include_paths.append("-I" + dependencies_directory + "/lib/websocketpp")
-    build_setup.n6_include_paths.append("-I" + dependencies_directory + "/lib/asio/asio/include")
-    build_setup.n6_include_paths.append("-I" + dependencies_directory + "/lib/rapidjson/include")
+    build_setup.n6_include_paths.append('-I"' + dependencies_directory + "/lib" + '"')
+    build_setup.n6_include_paths.append('-I"' + dependencies_directory + "/lib/websocketpp" + '"')
+    build_setup.n6_include_paths.append('-I"' + dependencies_directory + "/lib/asio/asio/include" + '"')
+    build_setup.n6_include_paths.append('-I"' + dependencies_directory + "/lib/rapidjson/include" + '"')
 
     # These will force ASIO to compile without Boost
     build_setup.n4_macros.append("-DBOOST_DATE_TIME_NO_LIB")
