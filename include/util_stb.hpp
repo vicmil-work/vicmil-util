@@ -280,7 +280,7 @@ struct Image_float {
 //                           Loading fonts
 // ============================================================
 
-// For loading true type fonts (.ttf)
+// For loading true type fonts (.ttf, and .otf fonts)
 struct FontLoader {
     stbtt_fontinfo info;
     std::vector<unsigned char> font_data;
@@ -367,11 +367,20 @@ struct FontLoader {
         return_vec.reserve(characters.size());
 
         int x = 0;
+        int y = 0;
         for(int i = 0; i < characters.size(); i++) {
+            // Determine if we should go to a new line
+            if(characters[i] == '\n') {
+                return_vec.push_back(RectT<int>(0, 0, 0, 0));
+                y += line_height;
+                x = 0;
+                continue;
+            }
+
             // Get bounding box for character
             RectT<int> image_pos = _get_character_bounding_box(characters[i]);
             image_pos.x += x;
-            image_pos.y += ascent;
+            image_pos.y += ascent + y;
 
             int advanceWidth;
             int leftSideBearing;
@@ -402,6 +411,109 @@ struct FontLoader {
     // Determine if a letter/character/unicode character is a part of the loaded font
     bool character_is_part_of_font(const int character) {
         return get_glyph_index(character) != 0;
+    }
+};
+
+/**
+ * Supports loading multiple .ttf or .otf fonts at the same time
+ */
+struct MultiFontLoader {
+    std::vector<FontLoader> fontLoaders;  // Stores multiple fonts
+    int line_height = 64;
+
+    // Load a font from memory
+    void load_font_from_memory(unsigned char* fontBuffer, int size) {
+        fontLoaders.push_back(FontLoader());
+        fontLoaders.back().load_font_from_memory(fontBuffer, size, line_height);
+    }
+
+    // Load a font from a file
+    void load_font_from_file(const std::string& filepath) {
+        fontLoaders.push_back(FontLoader());
+        fontLoaders.back().load_font_from_file(filepath, line_height);
+    }
+
+    // Set line height for all loaded fonts
+    void set_line_height(int line_height_) {
+        line_height = line_height_;
+        for (auto& loader : fontLoaders) {
+            loader.set_line_height(line_height_);
+        }
+    }
+
+    // Find the first font that supports a given character
+    FontLoader* find_font_with_character(int character) {
+        for (auto& loader : fontLoaders) {
+            if (loader.character_is_part_of_font(character)) {
+                return &loader;
+            }
+        }
+        return nullptr;  // No font supports the character
+    }
+
+    // Get character image with fallback mechanism
+    ImageRGBA_UChar get_character_image_rgba(int character, ColorRGBA_UChar color_mask = ColorRGBA_UChar(255, 255, 255, 255)) {
+        FontLoader* fontLoader = find_font_with_character(character);
+        if (!fontLoader) return ImageRGBA_UChar();  // Return empty image if no font supports the character
+        return fontLoader->get_character_image_rgba(character, color_mask);
+    }
+
+    std::vector<RectT<int>> get_character_image_positions(const std::vector<int>& characters) {
+        std::vector<RectT<int>> positions;
+        positions.reserve(characters.size());
+    
+        int x = 0;  // Track x-position for character placement
+        int y = 0;
+        int ascent = 0;  // Store max ascent among used fonts for alignment
+    
+        // Determine ascent (highest baseline for proper alignment)
+        for (int c : characters) {
+            FontLoader* font = find_font_with_character(c);
+            if (font && font->ascent > ascent) {
+                ascent = font->ascent;
+            }
+        }
+    
+        // Iterate over characters to compute their positions
+        for (size_t i = 0; i < characters.size(); i++) {
+            // Determine if we should go to a new line
+            if(characters[i] == '\n') {
+                positions.push_back(RectT<int>(x, 0, 0, 0));
+                y += line_height;
+                x = 0;
+                continue;
+            }
+
+            int character = characters[i];
+    
+            FontLoader* font = find_font_with_character(character);
+            if (!font) continue;  // Skip if no valid font found
+    
+            // Get character bounding box
+            RectT<int> image_pos = font->_get_character_bounding_box(character);
+            image_pos.x += x;  // Adjust x position
+            image_pos.y += ascent + y;  // Align to max ascent
+    
+            int advanceWidth, leftSideBearing;
+            font->_get_character_advancement(character, &advanceWidth, &leftSideBearing);
+            image_pos.x += leftSideBearing;  // Adjust by left side bearing
+    
+            // Store bounding box position
+            positions.push_back(image_pos);
+    
+            // Increment position for next character
+            if (i + 1 < characters.size()) {
+                int kern = font->_get_kernal_advancement(character, characters[i + 1]);
+                x += advanceWidth + kern;
+            }
+        }
+    
+        return positions;
+    }
+
+    // Check if a character is supported by any loaded font
+    bool character_is_part_of_font(int character) {
+        return find_font_with_character(character) != nullptr;
     }
 };
 }

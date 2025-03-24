@@ -81,6 +81,9 @@ class BuildSetup:
         if os.path.exists(self.vicmil_pip_path + "/json"):
             print("Including json")
             self.include_json()
+        if os.path.exists(self.vicmil_pip_path + "/rectpack_cpp"):
+            print("Including rectpack_cpp")
+            self.include_rectpack_cpp()
 
     def include_sdl_opengl(self): # Opengl is a cross platform graphics library that also works in the browser(with the right setup)
         self._include_vicmil_pip()
@@ -105,6 +108,10 @@ class BuildSetup:
 
     def include_json(self):
         self._include_vicmil_pip()
+
+    def include_rectpack_cpp(self):
+        self._include_vicmil_pip()
+        self.n2_cpp_files.append(self.vicmil_pip_path + "/rectpack_cpp/src/smol-atlas.cpp")
 
     def generate_build_command(self):
         arguments = [

@@ -10,6 +10,7 @@
 #include "util_std.hpp"
 #include "util_stb.hpp"
 #include "util_obj_loader.hpp"
+#include "rectpack_cpp/src/smol-atlas.h" // For packing 2D images into one texture
 
 #if defined(__EMSCRIPTEN__)
     #include <SDL.h>
@@ -1411,50 +1412,6 @@ public:
     }
 };
 
-class TextureLayout {
-public:
-    TextureLayout() {}
-    std::map<std::string, GuiEngine::Rect> _element_pos = std::map<std::string, GuiEngine::Rect>();
-    int _texture_width = 0;
-    int _texture_height = 0;
-    void set_texture_size(int w, int h) {
-        _texture_width = w;
-        _texture_height = h;
-    }
-    void add_element(std::string name, int x, int y, int w, int h) {
-        _element_pos[name] = GuiEngine::Rect(x, y, w, h);
-    }
-    void remove_element(std::string name) {
-        _element_pos.erase(name);
-    }
-    bool contains_element(std::string name) {
-        return _element_pos.count(name) != 0;
-    }
-    std::vector<std::string> element_list() {
-        std::vector<std::string> keys;
-        keys.reserve(_element_pos.size());
-
-        // Extract keys
-        for (const auto& pair : _element_pos) {
-            keys.push_back(pair.first);
-        }
-
-        return keys;
-    }
-    GuiEngine::Rect get_element_pos(std::string name) {
-        return _element_pos[name];
-    }
-    GuiEngine::RectGL get_element_gl_pos(std::string name) {
-        GuiEngine::Rect pos = _element_pos[name];
-        GuiEngine::RectGL gl_pos;
-        gl_pos.x = (float(pos.x) / _texture_width);
-        gl_pos.y = (float(pos.y) / _texture_height); // The y = 0 is at the bottom of the screen
-        gl_pos.w = float(pos.w) / _texture_width;
-        gl_pos.h =  float(pos.h) / _texture_height;
-        return gl_pos;
-    }
-};
-
 // ============================================================
 //                    Default gpu programs (i.e. shaders)
 // ============================================================
@@ -1590,13 +1547,16 @@ public:
         default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_vertex_buffer.draw_triangles();
     }
-    void draw_2d_VertexTextureCoord_vertex_buffer(std::vector<vicmil::VertexTextureCoord>& vertices, vicmil::GPUImage gpu_image) {
+    void draw_2d_VertexTextureCoord_vertex_buffer(std::vector<vicmil::VertexTextureCoord>& vertices, vicmil::GPUTexture gpu_texture) {
         gpu_program_VertexTextureCoord_no_proj.bind_program();
         vicmil::DefaultGpuPrograms::set_vertex_buffer_layout_VertexTextureCoord(gpu_program_VertexTextureCoord_no_proj);
-        gpu_image.texture.bind();
+        gpu_texture.bind();
         default_vertex_buffer.bind();
         default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_vertex_buffer.draw_triangles();
+    }
+    void draw_2d_VertexTextureCoord_vertex_buffer(std::vector<vicmil::VertexTextureCoord>& vertices, vicmil::GPUImage gpu_image) {
+        draw_2d_VertexTextureCoord_vertex_buffer(vertices, gpu_image.texture);
     }
     void draw_3d_VertexCoordColor_vertex_buffer(std::vector<vicmil::VertexCoordColor>& vertices, glm::mat4 transform_matrix) {
         gpu_program_VertexCoordColor_proj.bind_program();
@@ -1622,6 +1582,205 @@ public:
         default_vertex_buffer.overwrite_vertex_vector(vertices);
         default_uniform_buffer.set_matrix(transform_matrix, gpu_program_VertexTextureCoord_proj.id);
         default_vertex_buffer.draw_triangles();
+    }
+};
+
+
+// ============================================================
+//                    Texture Packing
+// ============================================================
+
+class TextureLayout {
+public:
+    TextureLayout() {}
+    std::map<std::string, GuiEngine::Rect> _element_pos = std::map<std::string, GuiEngine::Rect>();
+    int _texture_width = 0;
+    int _texture_height = 0;
+    void set_texture_size(int w, int h) {
+        _texture_width = w;
+        _texture_height = h;
+    }
+    void add_element(std::string name, int x, int y, int w, int h) {
+        _element_pos[name] = GuiEngine::Rect(x, y, w, h);
+    }
+    void remove_element(std::string name) {
+        _element_pos.erase(name);
+    }
+    bool contains_element(std::string name) {
+        return _element_pos.count(name) != 0;
+    }
+    std::vector<std::string> element_list() {
+        std::vector<std::string> keys;
+        keys.reserve(_element_pos.size());
+
+        // Extract keys
+        for (const auto& pair : _element_pos) {
+            keys.push_back(pair.first);
+        }
+
+        return keys;
+    }
+    GuiEngine::Rect get_element_pos(std::string name) {
+        return _element_pos[name];
+    }
+    GuiEngine::RectGL get_element_gl_pos(std::string name) {
+        GuiEngine::Rect pos = _element_pos[name];
+        GuiEngine::RectGL gl_pos;
+        gl_pos.x = (float(pos.x) / _texture_width);
+        gl_pos.y = (float(pos.y) / _texture_height); // The y = 0 is at the bottom of the screen
+        gl_pos.w = float(pos.w) / _texture_width;
+        gl_pos.h =  float(pos.h) / _texture_height;
+        return gl_pos;
+    }
+};
+
+
+class RectPack {
+public:
+    struct Rect {
+        int x;
+        int y;
+        int w;
+        int h;
+        Rect(int x_, int y_, int w_, int h_) {
+            x = x_;
+            y = y_;
+            w = w_;
+            h = h_;
+        }
+        std::string to_string() {
+            return "x=" + std::to_string(x) + ", y=" + std::to_string(y) + ", w=" + std::to_string(w) + ", h=" + std::to_string(h);
+        }
+    };
+    smol_atlas_t* atlas = nullptr;
+    std::map<std::string, smol_atlas_item_t*> box_item_ref = {};
+    int width = 0;
+    int height = 0;
+    RectPack(){}
+    RectPack(int w, int h) {
+        width = w;
+        height = h;
+        atlas = sma_atlas_create(w, h);
+    }
+    bool add_rect(std::string label, int w, int h) {
+        if(!atlas) {
+            return false;
+        }
+        // Returns true if the rect was added successfully
+        //Print("w " << w << "  h " << h << "  label " << label);
+        if(box_item_ref.count(label) == 0) {
+            //Print("add item");
+            smol_atlas_item_t* item = sma_item_add(atlas, w, h);
+
+            //Print("return");
+            if(item) {
+                box_item_ref[label] = item;
+                return true;
+            }
+        }
+        return false;
+    }
+    void remove_rect(std::string label) {
+        if(!atlas) {
+            return;
+        }
+        if(box_item_ref.count(label) != 0) {
+            smol_atlas_item_t* item = box_item_ref[label];
+            sma_item_remove(atlas, item);
+            box_item_ref.erase(label);
+        }
+    }
+    Rect get_rect(std::string label) {
+        if(!atlas) {
+            return Rect(0, 0, 0, 0);
+        }
+        if(box_item_ref.count(label) == 0) {
+            return Rect(0, 0, 0, 0);
+        }
+        else {
+            smol_atlas_item_t* item = box_item_ref[label];
+            return Rect(
+                sma_item_x(item),
+                sma_item_y(item),
+                sma_item_width(item),
+                sma_item_height(item)
+            );
+        }
+    }
+    ~RectPack() {
+        if(atlas) {
+            for(auto& item: box_item_ref) {
+                sma_item_remove(atlas, item.second);
+            }
+            sma_atlas_destroy(atlas);
+        }
+    }
+};
+
+class ImageTextureManager{
+public:
+    vicmil::GPUTexture gpu_texture = vicmil::GPUTexture(); // Optional, does not create a texture unless update_gpu_texture is called
+    vicmil::ImageRGBA_UChar cpu_texture = vicmil::ImageRGBA_UChar(); // Create a mirror of the gpu texture on the cpu
+    std::map<std::string, vicmil::ImageRGBA_UChar> images = {}; // Contains a copy of all the images that have been added(and not removed)
+    RectPack image_packing; // Packs the images in an efficient manner
+    ImageTextureManager() {}
+    ImageTextureManager(int width, int height) : image_packing(RectPack(width, height)){
+        cpu_texture = vicmil::ImageRGBA_UChar();
+        cpu_texture.resize(width, height);
+    }
+    void update_gpu_texture() {
+        if(gpu_texture.no_texture) {
+            // If no texture has been allocated to the gpu
+            // Allocate a new texture on the gpu
+            // Copy the cpu texture to the gpu
+            gpu_texture = vicmil::GPUTexture::from_raw_image_rgba(cpu_texture);
+        }
+        else {
+            gpu_texture.overwrite_texture_data(cpu_texture);
+        }
+    }
+    void delete_gpu_texture() {
+        gpu_texture.delete_texture();
+    }
+    bool add_image(std::string label, vicmil::ImageRGBA_UChar image) {
+        // Returns true if it successfully allocated the image
+        if(images.count(label) != 0) {
+            return false; // Image with that label already exists!
+        }
+        //Print("Add rect");
+        if(!image_packing.add_rect(label, image.w, image.h)) {
+            return false; // Could not find enough available space for the image
+        }
+        //Print("Assign image");
+        images[label] = image;
+
+        //Print("Get rect");
+        auto rect = image_packing.get_rect(label);
+
+        //Print("Copy image");
+        image.copy_to_image(&cpu_texture, rect.x, rect.y);
+        return true;
+    }
+    void remove_image(std::string label) {
+        if(images.count(label) == 0) {
+            return; // No image with that label exists!
+        }
+        images.erase(label);
+        image_packing.remove_rect(label);
+    }
+    bool contains_image(std::string label) {
+        return images.count(label) != 0;
+    }
+    RectPack::Rect get_image_pos(std::string label) {
+        return image_packing.get_rect(label);
+    }
+    vicmil::GuiEngine::RectGL get_image_pos_gl(std::string label) {
+        RectPack::Rect rect = get_image_pos(label);
+        return vicmil::GuiEngine::RectGL(rect.x / (double)image_packing.width, rect.y / (double)image_packing.height,
+                                    rect.w / (double)image_packing.width, rect.h / (double)image_packing.height);
+    }
+    static std::string get_unicode_label(int unicode_char) {
+        return "U_" + std::to_string(unicode_char);
     }
 };
 }
